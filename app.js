@@ -469,47 +469,6 @@
       : '<span class="hint">Add hikes to see this breakdown.</span>';
   }
 
-  // ---------- backup / restore ----------
-  $('#export-btn').addEventListener('click', () => {
-    const payload = { app: 'trail-log', version: 1, exportedAt: new Date().toISOString(), hikes: allHikes };
-    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const stamp = new Date().toISOString().slice(0, 10);
-    a.href = url;
-    a.download = `trail-log-backup-${stamp}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
-    toast('Backup file downloaded');
-  });
-
-  $('#import-btn').addEventListener('click', () => $('#import-file').click());
-
-  $('#import-file').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    e.target.value = '';
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const payload = JSON.parse(text);
-      const hikes = Array.isArray(payload) ? payload : payload.hikes;
-      if (!Array.isArray(hikes)) throw new Error('Not a valid backup file');
-      let count = 0;
-      for (const h of hikes) {
-        if (!h.id) h.id = TrailDB.uuid();
-        await TrailDB.put(h);
-        count++;
-      }
-      await loadHikes();
-      toast(`Restored ${count} hike${count === 1 ? '' : 's'}`);
-    } catch (err) {
-      console.error(err);
-      toast('Could not read that backup file');
-    }
-  });
-
   // ---------- data loading ----------
   async function loadHikes() {
     const raw = await TrailDB.getAll();
@@ -551,9 +510,8 @@
           console.warn('retry delete failed', err);
         }
       } else if (!h._remoteSha) {
-        // Covers hikes that failed to push, were added before GitHub was
-        // connected, or came in through Backup/Restore — anything without
-        // a remote commit yet is treated as needing one.
+        // Covers hikes that failed to push, or were added before GitHub was
+        // connected — anything without a remote commit yet needs one.
         try {
           const committed = await GitHubSync.commitHike(h, h._pendingPhotoPathsBefore || null);
           await TrailDB.put(committed);

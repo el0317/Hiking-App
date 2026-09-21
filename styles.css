@@ -26,6 +26,11 @@
 
 * { box-sizing: border-box; }
 
+/* An attribute selector and a class selector tie on specificity, so without
+   this, any class that sets `display` (e.g. .backup-actions{display:flex})
+   can beat the UA's [hidden]{display:none} and the element stays visible. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
@@ -95,6 +100,12 @@ body {
   color: var(--text);
   font-weight: 400;
   width: 100%;
+  /* Without this, iOS Safari renders native pickers (date, select) in light
+     mode regardless of our own colors, leaving a stray white box. */
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  .field input, .field select, .field textarea { color-scheme: dark; }
 }
 .field-row {
   display: flex;
