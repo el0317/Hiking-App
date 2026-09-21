@@ -1,4 +1,4 @@
-const CACHE = 'trail-log-v4';
+const CACHE = 'trail-log-v5';
 const SHELL = [
   './',
   'index.html',
