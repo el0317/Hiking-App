@@ -39,6 +39,7 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial, sans-serif;
   height: 100%;
   overscroll-behavior-y: none;
+  overflow-x: hidden;
 }
 
 body {
@@ -72,6 +73,11 @@ body {
   position: absolute;
   inset: 0;
   overflow-y: auto;
+  /* Without this, setting only overflow-y computes overflow-x to `auto` too
+     (per spec), so any child rendering even 1px wider than the view (iOS's
+     date input, most notably) silently turns into its own horizontal
+     scroll container instead of just being clipped. */
+  overflow-x: hidden;
   padding: 16px 16px calc(24px + var(--safe-bottom));
   -webkit-overflow-scrolling: touch;
 }
