@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Trail Log</title>
+
+<!-- PWA / installability -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2f5233">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trail Log">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="app-header">
+  <h1 id="header-title">Trail Log</h1>
+</header>
+
+<main id="views">
+
+  <!-- ADD HIKE -->
+  <section id="view-add" class="view">
+    <form id="hike-form" novalidate>
+      <input type="hidden" id="hike-id">
+
+      <label class="field">
+        <span>Trail Name</span>
+        <input type="text" id="f-trail" required placeholder="e.g. Angels Landing">
+      </label>
+
+      <div class="field-row">
+        <label class="field">
+          <span>City</span>
+          <input type="text" id="f-city" placeholder="Springdale">
+        </label>
+        <label class="field">
+          <span>State</span>
+          <input type="text" id="f-state" placeholder="Utah">
+        </label>
+      </div>
+
+      <label class="field">
+        <span>Country</span>
+        <input type="text" id="f-country" placeholder="United States" value="United States">
+      </label>
+
+      <div class="field-row">
+        <label class="field">
+          <span>Date Hiked</span>
+          <input type="date" id="f-date">
+        </label>
+        <label class="field">
+          <span>Mileage</span>
+          <input type="number" id="f-miles" step="0.1" min="0" inputmode="decimal" placeholder="5.4">
+        </label>
+      </div>
+
+      <label class="field">
+        <span>Hike Ranking</span>
+        <div id="f-stars" class="star-picker" data-value="0">
+          <button type="button" class="star" data-star="1">★</button>
+          <button type="button" class="star" data-star="2">★</button>
+          <button type="button" class="star" data-star="3">★</button>
+          <button type="button" class="star" data-star="4">★</button>
+          <button type="button" class="star" data-star="5">★</button>
+        </div>
+      </label>
+
+      <label class="field">
+        <span>Coolest Part of the Hike</span>
+        <select id="f-highlight">
+          <option value="">— Select —</option>
+          <option value="views">Summit / Views</option>
+          <option value="waterfalls">Waterfalls</option>
+          <option value="animals">Animals / Wildlife</option>
+          <option value="wildflowers">Wildflowers</option>
+          <option value="water">Lake / River</option>
+          <option value="forest">Forest</option>
+          <option value="challenge">The Challenge</option>
+          <option value="company">Good Company</option>
+          <option value="other">Other</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Photos</span>
+        <input type="file" id="f-photos" accept="image/*" multiple>
+        <div id="photo-preview" class="photo-preview"></div>
+      </label>
+
+      <div class="form-actions">
+        <button type="button" id="cancel-edit" class="btn btn-ghost" hidden>Cancel</button>
+        <button type="submit" class="btn btn-primary" id="save-btn">Save Hike</button>
+      </div>
+      <p id="form-status" class="form-status" role="status"></p>
+    </form>
+  </section>
+
+  <!-- LIST -->
+  <section id="view-list" class="view">
+    <div class="filter-bar">
+      <input type="search" id="filter-search" placeholder="Search trail, city...">
+      <div class="filter-row">
+        <select id="filter-state"><option value="">All States</option></select>
+        <select id="filter-country"><option value="">All Countries</option></select>
+        <select id="filter-highlight"><option value="">All Highlights</option></select>
+        <select id="filter-rating">
+          <option value="">All Ratings</option>
+          <option value="5">★★★★★</option>
+          <option value="4">★★★★+</option>
+          <option value="3">★★★+</option>
+          <option value="2">★★+</option>
+          <option value="1">★+</option>
+        </select>
+      </div>
+    </div>
+    <div id="hike-list" class="hike-list"></div>
+    <p id="list-empty" class="empty-state" hidden>No hikes yet — tap the + tab to add your first one.</p>
+  </section>
+
+  <!-- MAP -->
+  <section id="view-map" class="view">
+    <div id="map"></div>
+  </section>
+
+  <!-- STATS -->
+  <section id="view-stats" class="view">
+    <div class="stats-grid" id="stats-grid"></div>
+
+    <h2 class="section-title">Ratings Breakdown</h2>
+    <div id="rating-breakdown" class="rating-breakdown"></div>
+
+    <h2 class="section-title">Coolest Parts</h2>
+    <div id="highlight-breakdown" class="highlight-breakdown"></div>
+
+    <h2 class="section-title">Backup &amp; Restore</h2>
+    <div class="backup-actions">
+      <button id="export-btn" class="btn btn-secondary">Export Backup File</button>
+      <button id="import-btn" class="btn btn-secondary">Restore From File</button>
+      <input type="file" id="import-file" accept="application/json" hidden>
+    </div>
+    <p class="hint">Backing up saves all your hikes and photos into one file you can AirDrop or email to your other device, then restore it there.</p>
+  </section>
+
+</main>
+
+<nav class="tab-bar">
+  <button class="tab-btn" data-view="view-add" aria-label="Add Hike">
+    <span class="tab-icon">＋</span><span class="tab-label">Add</span>
+  </button>
+  <button class="tab-btn" data-view="view-list" aria-label="All Hikes">
+    <span class="tab-icon">📋</span><span class="tab-label">Hikes</span>
+  </button>
+  <button class="tab-btn" data-view="view-map" aria-label="Map">
+    <span class="tab-icon">🗺️</span><span class="tab-label">Map</span>
+  </button>
+  <button class="tab-btn" data-view="view-stats" aria-label="Stats">
+    <span class="tab-icon">🏅</span><span class="tab-label">Stats</span>
+  </button>
+</nav>
+
+<!-- Detail modal -->
+<div id="detail-modal" class="modal" hidden>
+  <div class="modal-backdrop"></div>
+  <div class="modal-sheet">
+    <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button id="modal-edit" class="btn btn-secondary">Edit</button>
+      <button id="modal-delete" class="btn btn-danger">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="db.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
