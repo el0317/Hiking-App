@@ -113,6 +113,16 @@ body {
 @media (prefers-color-scheme: dark) {
   .field input, .field select, .field textarea { color-scheme: dark; }
 }
+.date-select-row {
+  display: flex;
+  gap: 8px;
+}
+/* Plain <select> elements, unlike <input type="date">, have no internal
+   shadow-DOM minimum width on iOS — these sizes are honored exactly. */
+.date-select-row select#f-date-month { flex: 1.3; min-width: 0; }
+.date-select-row select#f-date-day { flex: 0.8; min-width: 0; }
+.date-select-row select#f-date-year { flex: 1; min-width: 0; }
+
 .field-row {
   display: flex;
   gap: 12px;

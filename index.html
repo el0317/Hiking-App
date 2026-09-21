@@ -52,10 +52,14 @@
         <input type="text" id="f-country" placeholder="United States" value="United States">
       </label>
 
-      <label class="field">
+      <div class="field">
         <span>Date Hiked</span>
-        <input type="date" id="f-date">
-      </label>
+        <div class="date-select-row">
+          <select id="f-date-month" aria-label="Month"><option value="">Month</option></select>
+          <select id="f-date-day" aria-label="Day"><option value="">Day</option></select>
+          <select id="f-date-year" aria-label="Year"><option value="">Year</option></select>
+        </div>
+      </div>
 
       <label class="field">
         <span>Mileage</span>

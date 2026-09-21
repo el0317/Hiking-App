@@ -49,6 +49,48 @@
     return `${m}/${day}/${y}`;
   }
 
+  // ---------- date select (Month/Day/Year) ----------
+  const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  function populateDateSelects() {
+    const monthSel = $('#f-date-month');
+    MONTH_NAMES.forEach((name, i) => {
+      const opt = document.createElement('option');
+      opt.value = String(i + 1).padStart(2, '0');
+      opt.textContent = name;
+      monthSel.appendChild(opt);
+    });
+
+    const daySel = $('#f-date-day');
+    for (let d = 1; d <= 31; d++) {
+      const opt = document.createElement('option');
+      opt.value = String(d).padStart(2, '0');
+      opt.textContent = String(d);
+      daySel.appendChild(opt);
+    }
+
+    const yearSel = $('#f-date-year');
+    const currentYear = new Date().getFullYear();
+    for (let y = currentYear + 1; y >= currentYear - 80; y--) {
+      const opt = document.createElement('option');
+      opt.value = String(y);
+      opt.textContent = String(y);
+      yearSel.appendChild(opt);
+    }
+  }
+
+  function getDateFromSelects() {
+    const m = $('#f-date-month').value, d = $('#f-date-day').value, y = $('#f-date-year').value;
+    return (m && d && y) ? `${y}-${m}-${d}` : '';
+  }
+
+  function setDateSelects(dateHiked) {
+    const [y, m, d] = (dateHiked || '').split('-');
+    $('#f-date-month').value = m || '';
+    $('#f-date-day').value = d || '';
+    $('#f-date-year').value = y || '';
+  }
+
   // ---------- tabs ----------
   function showView(viewId) {
     $all('.view').forEach(v => v.classList.toggle('active', v.id === viewId));
@@ -176,7 +218,7 @@
     $('#f-city').value = hike.city || '';
     $('#f-state').value = hike.state || '';
     $('#f-country').value = hike.country || '';
-    $('#f-date').value = hike.dateHiked || '';
+    setDateSelects(hike.dateHiked);
     $('#f-miles').value = hike.miles ?? '';
     setStars(hike.rating || 0);
     $('#f-highlight').value = hike.highlight || '';
@@ -217,7 +259,7 @@
       id: editingId || TrailDB.uuid(),
       trailName,
       city, state, country,
-      dateHiked: $('#f-date').value || '',
+      dateHiked: getDateFromSelects(),
       miles: parseFloat($('#f-miles').value) || 0,
       rating: Number(starPicker.dataset.value) || 0,
       highlight: $('#f-highlight').value,
@@ -607,6 +649,7 @@
 
   // ---------- init ----------
   initMap();
+  populateDateSelects();
   resetForm();
   refreshSyncUI();
   showView('view-add');
