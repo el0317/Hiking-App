@@ -339,6 +339,25 @@ body {
   display: flex;
   gap: 10px;
 }
+
+.sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--green-light);
+  color: var(--green-dark);
+  margin-bottom: 12px;
+}
+@media (prefers-color-scheme: dark) { .sync-status { color: #8fc99b; } }
+.sync-status.error { background: #fbe9e7; color: var(--danger); }
+@media (prefers-color-scheme: dark) {
+  .sync-status.error { background: #3a201d; color: #e59189; }
+}
+#sync-connect-form { margin-top: 4px; }
 .hint {
   font-size: 0.8rem;
   color: var(--text-muted);

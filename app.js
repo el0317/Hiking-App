@@ -180,7 +180,7 @@
     $('#f-miles').value = hike.miles ?? '';
     setStars(hike.rating || 0);
     $('#f-highlight').value = hike.highlight || '';
-    currentPhotos = (hike.photos || []).map(p => ({ id: p.id, dataUrl: p.dataUrl }));
+    currentPhotos = (hike.photos || []).map(p => ({ id: p.id, dataUrl: p.dataUrl, path: p.path }));
     renderPhotoPreview();
     $('#save-btn').textContent = 'Update Hike';
     $('#cancel-edit').hidden = false;
@@ -211,6 +211,8 @@
       if (loc) { lat = loc.lat; lon = loc.lon; }
     }
 
+    const previousPhotoPaths = existing ? (existing.photos || []).map(p => p.path).filter(Boolean) : null;
+
     const hike = {
       id: editingId || TrailDB.uuid(),
       trailName,
@@ -224,11 +226,26 @@
       createdAt: existing ? existing.createdAt : Date.now(),
     };
 
-    await TrailDB.put(hike);
+    let saved = hike;
+    let syncFailed = false;
+    if (GitHubSync.isConfigured()) {
+      try {
+        const committed = await GitHubSync.commitHike(hike, previousPhotoPaths);
+        saved = committed;
+      } catch (err) {
+        console.warn('GitHub commit failed, saved locally instead', err);
+        saved = { ...hike, _pendingSync: true, _pendingPhotoPathsBefore: previousPhotoPaths };
+        syncFailed = true;
+      }
+    }
+
+    await TrailDB.put(saved);
     await loadHikes();
     saveBtn.disabled = false;
 
-    if (!lat && (city || state || country)) {
+    if (syncFailed) {
+      toast('Saved on this device — will sync to GitHub once you’re back online.');
+    } else if (!lat && (city || state || country)) {
       toast('Hike saved — couldn’t find that location for the map, but everything else is saved.');
     } else {
       toast(editingId ? 'Hike updated' : 'Hike saved!');
@@ -352,10 +369,24 @@
   $('#modal-delete').addEventListener('click', async () => {
     if (!activeDetailId) return;
     if (!confirm('Delete this hike? This cannot be undone.')) return;
-    await TrailDB.remove(activeDetailId);
+    const h = allHikes.find(x => x.id === activeDetailId);
     closeDetail();
+
+    if (GitHubSync.isConfigured() && h) {
+      try {
+        await GitHubSync.commitDeleteHike(h);
+        await TrailDB.remove(activeDetailId);
+        toast('Hike deleted');
+      } catch (err) {
+        console.warn('GitHub delete failed, queued for later', err);
+        await TrailDB.put({ ...h, _pendingDelete: true });
+        toast('Will delete once you’re back online');
+      }
+    } else {
+      await TrailDB.remove(activeDetailId);
+      toast('Hike deleted');
+    }
     await loadHikes();
-    toast('Hike deleted');
   });
 
   // ---------- map ----------
@@ -481,11 +512,111 @@
 
   // ---------- data loading ----------
   async function loadHikes() {
-    allHikes = await TrailDB.getAll();
+    const raw = await TrailDB.getAll();
+    allHikes = raw.filter(h => !h._pendingDelete);
     renderList();
     renderMap();
     renderStats();
   }
+
+  // ---------- GitHub sync ----------
+  function setSyncStatus(text, isError) {
+    const el = $('#sync-status');
+    el.textContent = text;
+    el.classList.toggle('error', !!isError);
+  }
+
+  function refreshSyncUI() {
+    const cfg = GitHubSync.getConfig();
+    const connected = GitHubSync.isConfigured();
+    $('#sync-connect-form').hidden = connected;
+    $('#sync-connected-actions').hidden = !connected;
+    if (connected) {
+      $('#gh-owner').value = cfg.owner;
+      $('#gh-repo').value = cfg.repo;
+      setSyncStatus(`Connected — ${cfg.owner}/${cfg.repo}`);
+    } else {
+      setSyncStatus('Not connected');
+    }
+  }
+
+  async function flushPending() {
+    const raw = await TrailDB.getAll();
+    for (const h of raw) {
+      if (h._pendingDelete) {
+        try {
+          await GitHubSync.commitDeleteHike(h);
+          await TrailDB.remove(h.id);
+        } catch (err) {
+          console.warn('retry delete failed', err);
+        }
+      } else if (!h._remoteSha) {
+        // Covers hikes that failed to push, were added before GitHub was
+        // connected, or came in through Backup/Restore — anything without
+        // a remote commit yet is treated as needing one.
+        try {
+          const committed = await GitHubSync.commitHike(h, h._pendingPhotoPathsBefore || null);
+          await TrailDB.put(committed);
+        } catch (err) {
+          console.warn('retry sync failed', err);
+        }
+      }
+    }
+  }
+
+  let syncInFlight = false;
+
+  async function syncNow(showToasts) {
+    if (!GitHubSync.isConfigured()) return;
+    if (syncInFlight) return; // avoid overlapping pulls/pushes from online + visibility + manual triggers
+    syncInFlight = true;
+    setSyncStatus('Syncing…');
+    try {
+      await flushPending();
+      await GitHubSync.pull();
+      await loadHikes();
+      refreshSyncUI();
+      if (showToasts) toast('Synced with GitHub');
+    } catch (err) {
+      console.warn('sync failed', err);
+      setSyncStatus('Sync failed — will retry', true);
+      if (showToasts) toast('Sync failed: ' + err.message);
+    } finally {
+      syncInFlight = false;
+    }
+  }
+
+  $('#gh-connect-btn').addEventListener('click', async () => {
+    const owner = $('#gh-owner').value.trim();
+    const repo = $('#gh-repo').value.trim();
+    const token = $('#gh-token').value.trim();
+    if (!owner || !repo || !token) { toast('Fill in owner, repo, and token'); return; }
+    setSyncStatus('Connecting…');
+    try {
+      await GitHubSync.testConnection({ owner, repo, token });
+      $('#gh-token').value = '';
+      refreshSyncUI();
+      toast('Connected! Syncing your hikes…');
+      await syncNow(true);
+    } catch (err) {
+      console.warn('connect failed', err);
+      setSyncStatus('Not connected', true);
+      toast('Could not connect — check the owner, repo, and token');
+    }
+  });
+
+  $('#gh-sync-now-btn').addEventListener('click', () => syncNow(true));
+
+  $('#gh-disconnect-btn').addEventListener('click', () => {
+    GitHubSync.clearConfig();
+    refreshSyncUI();
+    toast('Disconnected from GitHub. Your hikes are still saved on this device.');
+  });
+
+  window.addEventListener('online', () => syncNow(false));
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') syncNow(false);
+  });
 
   // ---------- service worker ----------
   if ('serviceWorker' in navigator) {
@@ -497,6 +628,7 @@
   // ---------- init ----------
   initMap();
   resetForm();
+  refreshSyncUI();
   showView('view-add');
-  loadHikes();
+  loadHikes().then(() => syncNow(false));
 })();

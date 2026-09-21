@@ -141,6 +141,29 @@
     <h2 class="section-title">Coolest Parts</h2>
     <div id="highlight-breakdown" class="highlight-breakdown"></div>
 
+    <h2 class="section-title">GitHub Sync</h2>
+    <div id="sync-status" class="sync-status">Not connected</div>
+    <div id="sync-connect-form">
+      <label class="field">
+        <span>Repo Owner</span>
+        <input type="text" id="gh-owner" placeholder="el0317">
+      </label>
+      <label class="field">
+        <span>Repo Name</span>
+        <input type="text" id="gh-repo" placeholder="Hiking-App">
+      </label>
+      <label class="field">
+        <span>Access Token</span>
+        <input type="password" id="gh-token" placeholder="ghp_...">
+      </label>
+      <button type="button" id="gh-connect-btn" class="btn btn-primary">Connect</button>
+    </div>
+    <div id="sync-connected-actions" class="backup-actions" hidden>
+      <button type="button" id="gh-sync-now-btn" class="btn btn-secondary">Sync Now</button>
+      <button type="button" id="gh-disconnect-btn" class="btn btn-ghost">Disconnect</button>
+    </div>
+    <p class="hint">Connecting once per device keeps hikes and photos in sync automatically through your private GitHub repo. Your dad never needs to touch this screen once it's set up.</p>
+
     <h2 class="section-title">Backup &amp; Restore</h2>
     <div class="backup-actions">
       <button id="export-btn" class="btn btn-secondary">Export Backup File</button>
@@ -184,6 +207,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="db.js"></script>
+<script src="github.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
