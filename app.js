@@ -369,13 +369,14 @@
   $('#modal-delete').addEventListener('click', async () => {
     if (!activeDetailId) return;
     if (!confirm('Delete this hike? This cannot be undone.')) return;
-    const h = allHikes.find(x => x.id === activeDetailId);
+    const id = activeDetailId; // closeDetail() below clears activeDetailId — capture it first
+    const h = allHikes.find(x => x.id === id);
     closeDetail();
 
     if (GitHubSync.isConfigured() && h) {
       try {
         await GitHubSync.commitDeleteHike(h);
-        await TrailDB.remove(activeDetailId);
+        await TrailDB.remove(id);
         toast('Hike deleted');
       } catch (err) {
         console.warn('GitHub delete failed, queued for later', err);
@@ -383,13 +384,34 @@
         toast('Will delete once you’re back online');
       }
     } else {
-      await TrailDB.remove(activeDetailId);
+      await TrailDB.remove(id);
       toast('Hike deleted');
     }
     await loadHikes();
   });
 
   // ---------- map ----------
+  const pushpinIcon = L.divIcon({
+    className: 'pushpin-marker',
+    html: `<svg width="26" height="36" viewBox="0 0 26 36" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="13" cy="33" rx="4" ry="1.5" fill="rgba(0,0,0,0.28)"/>
+      <polygon points="10.5,18 15.5,18 13,32" fill="#9a9a9a"/>
+      <line x1="12.1" y1="19" x2="12.6" y2="28.5" stroke="#e2e2e2" stroke-width="0.7" stroke-linecap="round"/>
+      <circle cx="13" cy="10" r="9" fill="url(#pinGrad)" stroke="#8a1410" stroke-width="0.6"/>
+      <ellipse cx="9.5" cy="6.8" rx="3" ry="2" fill="rgba(255,255,255,0.55)"/>
+      <defs>
+        <radialGradient id="pinGrad" cx="35%" cy="30%" r="75%">
+          <stop offset="0%" stop-color="#ff6b5e"/>
+          <stop offset="55%" stop-color="#e5352a"/>
+          <stop offset="100%" stop-color="#b31f17"/>
+        </radialGradient>
+      </defs>
+    </svg>`,
+    iconSize: [26, 36],
+    iconAnchor: [13, 32],
+    popupAnchor: [0, -33],
+  });
+
   function initMap() {
     map = L.map('map', { worldCopyJump: true }).setView([30, 0], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -405,7 +427,7 @@
     const pts = [];
     allHikes.forEach(h => {
       if (h.lat == null || h.lon == null) return;
-      const marker = L.marker([h.lat, h.lon]);
+      const marker = L.marker([h.lat, h.lon], { icon: pushpinIcon });
       const locBits = [h.city, h.state, h.country].filter(Boolean).join(', ');
       const popupDiv = document.createElement('div');
       popupDiv.innerHTML = `

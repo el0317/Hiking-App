@@ -112,6 +112,11 @@ body {
   gap: 12px;
 }
 .field-row .field { flex: 1; min-width: 0; }
+/* iOS Safari's <input type="date"> has a stubborn internal minimum width
+   that ignores flex shrinking, so an even 50/50 split can overflow into
+   its neighbor. Give the date field room to breathe and fix the other
+   field's width instead of letting flex fight over the space. */
+.field-row .field.field-narrow { flex: 0 0 108px; }
 
 .star-picker {
   display: flex;
@@ -470,6 +475,11 @@ body {
   padding: 6px 10px;
   font-size: 0.8rem;
   cursor: pointer;
+}
+
+.pushpin-marker {
+  background: transparent;
+  border: none;
 }
 
 /* Toast */
